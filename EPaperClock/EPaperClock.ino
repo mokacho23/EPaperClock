@@ -179,20 +179,27 @@ int lastSec = 88;
 // 時刻取得情報
 char timeAdjustInfo[32];
 
+//bool firstFlg = true;
+
 void setup() {
 
   // e-paper
+  delay(100);
   display.init(115200, true, 2, false); // USE THIS for Waveshare boards with "clever" reset circuit, 2ms reset pulse
-  display.hibernate();
+
+  display.setRotation(3);
+
+  // 全背景を白く描画
+  display.setFullWindow();
+  display.fillScreen(GxEPD_WHITE);
 
 }
-
 
 void connectWiFi(void) {
 
   if (WiFi.status() == WL_CONNECTED) return;
 
-  drawStrCenter(0, 20, display.width(), "connecting...");
+  sprintf(timeAdjustInfo, "connecting...");
 
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   int i = 0;
@@ -216,7 +223,6 @@ void adjustCurrentTime(void) {
   // NTPから時間取得
   configTime(9 * 3600L, 0, "ntp.nict.jp", "time.google.com", "ntp.jst.mfeed.ad.jp");
 
-  //sprintf(timeAdjustInfo, "last adj. %02d:%02d:%02d", currentHour, currentMin, currentSec);
   sprintf(timeAdjustInfo, "last adj. %02d:%02d", currentHour, currentMin);
 
 }
@@ -251,10 +257,7 @@ void getCurrentTime(void) {
 
 void outputToScreen(void) {
 
-  display.setRotation(3);
-  display.setTextColor(GxEPD_BLACK);
-  display.setFullWindow();
-  display.fillScreen(GxEPD_WHITE);
+  display.firstPage();
 
   // 時刻
   char timeStrHour1[2];
@@ -273,79 +276,84 @@ void outputToScreen(void) {
   sprintf(timeStrMin2,  "%d", currentMin % 10);
   //sprintf(timeStrSec1,  "%d", currentSec / 10);
   //sprintf(timeStrSec2,  "%d", currentSec % 10);
-  int numWidth   = 54;
-  int colonWidth = 28;
-  int top = 80;
+  const int numWidth   = 54;
+  const int colonWidth = 28;
+  const int top = 80;
   display.setFont(TIME_FONT);
-  drawStrCenter(numWidth * 0 + colonWidth * 0, top, numWidth,   timeStrHour1);
-  drawStrCenter(numWidth * 1 + colonWidth * 0, top, numWidth,   timeStrHour2);
-  drawStrCenter(numWidth * 2 + colonWidth * 0, top, colonWidth, ":");
-  drawStrCenter(numWidth * 2 + colonWidth * 1, top, numWidth,   timeStrMin1);
-  drawStrCenter(numWidth * 3 + colonWidth * 1, top, numWidth,   timeStrMin2);
-  //drawStrCenter(numWidth * 4 + colonWidth * 1, top, colonWidth, ":");
-  //drawStrCenter(numWidth * 4 + colonWidth * 2, top, numWidth,   timeStrSec1);
-  //drawStrCenter(numWidth * 5 + colonWidth * 2, top, numWidth,   timeStrSec2);
+  drawStrCenter(numWidth * 0 + colonWidth * 0, top, numWidth,   timeStrHour1, 0);
+  drawStrCenter(numWidth * 1 + colonWidth * 0, top, numWidth,   timeStrHour2, 0);
+  drawStrCenter(numWidth * 2 + colonWidth * 0, top, colonWidth, ":", -4);
+  drawStrCenter(numWidth * 2 + colonWidth * 1, top, numWidth,   timeStrMin1, 0);
+  drawStrCenter(numWidth * 3 + colonWidth * 1, top, numWidth,   timeStrMin2, 0);
+  //drawStrCenter(numWidth * 4 + colonWidth * 1, top, colonWidth, ":", -4);
+  //drawStrCenter(numWidth * 4 + colonWidth * 2, top, numWidth,   timeStrSec1, 0);
+  //drawStrCenter(numWidth * 5 + colonWidth * 2, top, numWidth,   timeStrSec2, 0);
 
   // 年月日
   char dateStr[32];
   sprintf(dateStr, "%d/%d/%d", currentYear, currentMon, currentMDay);
   display.setFont(DATE_FONT);
-  drawStrRight(0, 115, 200, dateStr);
+  drawStrRight(0, 120, 200, dateStr, -2, -4);
 
   // 曜日
   if (currentWDay >= 0 && currentWDay <= 6) {
-    display.drawBitmap(208, 96, weekKanji + currentWDay * (3 * 20), 24, 20, GxEPD_BLACK);
+    drawBitmap(208, 96, weekKanji + currentWDay * (3 * 20), 24, 20, GxEPD_BLACK);
   }
 
   // 同期情報
   //display.setFont(INFO_FONT);
   //drawStrLeft(130, 115, timeAdjustInfo);
 
-  // 00:00 の時は、スクリーン全体リフレッシュ
-  display.display(!(currentHour == 0 && currentMin == 0)); 
 }
 
-void drawStrCenter(int x, int y, int areaWidth, char * str) {
-  display.setCursor(x + (areaWidth - getStrWidth(str)) / 2, y);
-  display.print(str);
+void drawStrCenter(int16_t x, int16_t y, int16_t areaWidth, char * str, int16_t offset_y) {
+
+  int16_t tbx, tby; uint16_t tbw, tbh;
+  display.getTextBounds(str, 0, 0, &tbx, &tby, &tbw, &tbh);
+
+  display.setPartialWindow(x, y - tbh, areaWidth, ((tbh / 8) + 1) * 8);
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setCursor(x + (areaWidth - tbw) / 2, y + offset_y);
+    display.print(str);
+  } while (display.nextPage());
+
 }
-void drawStrRight(int x, int y, int areaWidth, char * str) {
-  display.setCursor(x + (areaWidth - getStrWidth(str)), y);
-  display.print(str);
+
+void drawStrRight(int16_t x, int16_t y, int16_t areaWidth, char * str, int16_t offset_x, int16_t offset_y) {
+
+  int16_t tbx, tby; uint16_t tbw, tbh;
+  display.getTextBounds(str, 0, 0, &tbx, &tby, &tbw, &tbh);
+
+  display.setPartialWindow(x, y - tbh, areaWidth, ((tbh / 8) + 1) * 8);
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setCursor(x + (areaWidth - tbw) + offset_x, y + offset_y);
+    display.print(str);
+  } while (display.nextPage());
+
 }
+
+void drawBitmap(int16_t x, int16_t y, const unsigned char * bitmap, int16_t w, int16_t h, uint16_t color) {
+
+  display.setPartialWindow(x, y, w, ((h / 8) + 1) * 8);
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.drawBitmap(x, y, bitmap, w, h, GxEPD_BLACK);
+  } while (display.nextPage());
+
+}
+
 void drawStrLeft(int x, int y, char * str) {
   display.setCursor(x, y);
   display.print(str);
 }
-uint16_t getStrWidth(char * str) {
-  int16_t tbx, tby; uint16_t tbw, tbh;
-  display.getTextBounds(str, 0, 0, &tbx, &tby, &tbw, &tbh);
-  return tbw;
-}
-
-// void outputText(char * text) {
-//   display.setRotation(1);
-//   display.setFont(&FreeSansBold18pt7b);
-//   display.setTextColor(GxEPD_BLACK);
-//   int16_t tbx, tby; uint16_t tbw, tbh;
-//   display.getTextBounds(text, 0, 0, &tbx, &tby, &tbw, &tbh);
-//   // center the bounding box by transposition of the origin:
-//   uint16_t x = ((display.width() - tbw) / 2) - tbx;
-//   uint16_t y = ((display.height() - tbh) / 2) - tby;
-//   display.setFullWindow();
-//   // display.firstPage();
-//   // do {
-//   //   display.fillScreen(GxEPD_WHITE);
-//   //   display.setCursor(x, y);
-//   //   display.print(text);
-//   // } while (display.nextPage());
-
-//   display.fillScreen(GxEPD_WHITE);
-//   display.setCursor(x, y);
-//   display.print(text);
-//   display.display(true); 
-
-// }
 
 void loop() {
 
@@ -354,13 +362,6 @@ void loop() {
   if (currentMin != lastMin) {
     outputToScreen();
   }
-
-  // display.setRotation(3);
-  // display.setTextColor(GxEPD_BLACK);
-  // display.setFullWindow();
-  // display.fillScreen(GxEPD_WHITE);
-  // display.drawBitmap(200, 96, weekKanji + (currentSec % 7) * (3 * 20), 24, 20, GxEPD_BLACK);
-  // display.display(true);
 
   delay(1000);
 
