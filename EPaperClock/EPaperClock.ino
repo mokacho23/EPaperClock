@@ -264,8 +264,6 @@ void outputToScreen(void) {
   char timeStrHour2[2];
   char timeStrMin1[2];
   char timeStrMin2[2];
-  //char timeStrSec1[2];
-  //char timeStrSec2[2];
   if (currentHour > 9) {
     sprintf(timeStrHour1, "%d", currentHour / 10);
   } else {
@@ -274,20 +272,7 @@ void outputToScreen(void) {
   sprintf(timeStrHour2, "%d", currentHour % 10);
   sprintf(timeStrMin1,  "%d", currentMin / 10);
   sprintf(timeStrMin2,  "%d", currentMin % 10);
-  //sprintf(timeStrSec1,  "%d", currentSec / 10);
-  //sprintf(timeStrSec2,  "%d", currentSec % 10);
-  const int numWidth   = 54;
-  const int colonWidth = 28;
-  const int top = 80;
-  display.setFont(TIME_FONT);
-  drawStrCenter(numWidth * 0 + colonWidth * 0, top, numWidth,   timeStrHour1, 0);
-  drawStrCenter(numWidth * 1 + colonWidth * 0, top, numWidth,   timeStrHour2, 0);
-  drawStrCenter(numWidth * 2 + colonWidth * 0, top, colonWidth, ":", -4);
-  drawStrCenter(numWidth * 2 + colonWidth * 1, top, numWidth,   timeStrMin1, 0);
-  drawStrCenter(numWidth * 3 + colonWidth * 1, top, numWidth,   timeStrMin2, 0);
-  //drawStrCenter(numWidth * 4 + colonWidth * 1, top, colonWidth, ":", -4);
-  //drawStrCenter(numWidth * 4 + colonWidth * 2, top, numWidth,   timeStrSec1, 0);
-  //drawStrCenter(numWidth * 5 + colonWidth * 2, top, numWidth,   timeStrSec2, 0);
+  drawTime(timeStrHour1, timeStrHour2, timeStrMin1, timeStrMin2);
 
   // 年月日
   char dateStr[32];
@@ -306,19 +291,38 @@ void outputToScreen(void) {
 
 }
 
-void drawStrCenter(int16_t x, int16_t y, int16_t areaWidth, char * str, int16_t offset_y) {
+void drawTime(char * timeStrHour1, char * timeStrHour2, char * timeStrMin1, char * timeStrMin2) {
+
+  int16_t tbx, tby; uint16_t tbw, tbh;
+  display.getTextBounds(timeStrHour2, 0, 0, &tbx, &tby, &tbw, &tbh);
+
+  const int numWidth   = 54;
+  const int colonWidth = 28;
+  const int top = 80;
+  display.setFont(TIME_FONT);
+  display.setPartialWindow(0, 0, numWidth * 4 + colonWidth, 88);
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    drawStrCenterPartial(numWidth * 0 + colonWidth * 0, top, numWidth,   timeStrHour1, 0);
+    drawStrCenterPartial(numWidth * 1 + colonWidth * 0, top, numWidth,   timeStrHour2, 0);
+    drawStrCenterPartial(numWidth * 2 + colonWidth * 0, top, colonWidth, ":", -4);
+    drawStrCenterPartial(numWidth * 2 + colonWidth * 1, top, numWidth,   timeStrMin1, 0);
+    drawStrCenterPartial(numWidth * 3 + colonWidth * 1, top, numWidth,   timeStrMin2, 0);
+  } while (display.nextPage());
+
+}
+
+void drawStrCenterPartial(int16_t x, int16_t y, int16_t areaWidth, char * str, int16_t offset_y) {
 
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(str, 0, 0, &tbx, &tby, &tbw, &tbh);
 
-  display.setPartialWindow(x, y - tbh, areaWidth, ((tbh / 8) + 1) * 8);
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
+  if (strlen(str) > 0) {
     display.setTextColor(GxEPD_BLACK);
     display.setCursor(x + (areaWidth - tbw) / 2, y + offset_y);
     display.print(str);
-  } while (display.nextPage());
+  }
 
 }
 
